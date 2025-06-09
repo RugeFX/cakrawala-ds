@@ -3,6 +3,7 @@
 
 using namespace std;
 
+// nyomot dari tugas kemarin
 template <typename T>
 struct Node
 {
@@ -12,6 +13,7 @@ struct Node
 	Node(int key, T value) : key(key), value(value), next(NULL) {}
 };
 
+// nyomot dari tugas kemarin
 template <typename T>
 class LinkedList
 {
@@ -69,10 +71,14 @@ class HashTable
 private:
 	LinkedList<T> *table;
 	int size;
-	function<int(int, int)> hash_function;
+	// tipe data aneh biar bisa masukin function yang nerima 2 parameter int dan return int
+	int (*hash_function)(int, int);
+	int total_elements;
+	int collisions;
+	int occupied_slots;
 
 public:
-	HashTable(int size, function<int(int, int)> hash_function) : size(size), hash_function(hash_function)
+	HashTable(int size, int (*hash_function)(int, int)) : size(size), hash_function(hash_function), total_elements(0), collisions(0), occupied_slots(0)
 	{
 		table = new LinkedList<T>[size];
 	}
@@ -84,11 +90,57 @@ public:
 
 	void insert(int key, T value)
 	{
+		// ambil index dari hasil olahan fungsi hash
 		int index = hash_function(key, size);
+		total_elements++;
+		
+		if (table[index].head == NULL)
+			// berarti belum ada data di index ini, jadi inkremen variabel occupied_slots
+			occupied_slots++;
+		else
+			// berarti udah ada data di index ini, jadi inkremen variabel collisions
+			collisions++;
+		
+		// masukin / append data ke linkedlist
 		table[index].append(key, value);
 	}
 
-	void display()
+	double get_load_factor() {
+		return (double)occupied_slots / size;
+	}
+
+	double get_collision_rate() {
+		// kalo totalnya 0 return 0, kalo ga return collisions / total_elements * 100
+		return total_elements > 0 ? ((double)collisions / total_elements) * 100 : 0;
+	}
+
+	int get_max_chain_length() {
+		// variabel buat nampung max length dari semua index
+		int max_length = 0;
+
+		for (int i = 0; i < size; i++) {
+			int length = 0;
+			Node<T>* curr = table[i].head;
+			while (curr != NULL) {
+				// nambahin ke length selama curr ga null
+				length++;
+				curr = curr->next;
+			}
+			// gunain fungsi max dari standard library buat ngebandingin max_length sama length, dan ambil yang paling besar dari keduanya
+			// kalo ga pake fungsi ini bisa pake ternary a > b ? a : b
+			max_length = max(max_length, length);
+		}
+
+		return max_length;
+	}
+
+	void display_metrics() {
+		cout << "Load Factor: " << get_load_factor() << endl;
+		cout << "Collision Rate: " << get_collision_rate() << "%" << endl;
+		cout << "Max Chain Length: " << get_max_chain_length() << endl;
+	}
+
+	void display_data()
 	{
 		for (int i = 0; i < size; i++)
 		{
@@ -98,16 +150,21 @@ public:
 	}
 };
 
+// helper function buat nge-test masink2 hash function
 template <typename T>
-void test_hash_functions(int keys[], T values[], int data_size, int size, function<int(int, int)> hash_function)
+void test_hash_functions(int keys[], T values[], int data_size, int size, int (*hash_function)(int, int))
 {
 	HashTable<T> table(size, hash_function);
 	for (int i = 0; i < data_size; i++)
 		table.insert(keys[i], values[i]);
 
-	table.display();
+	// nampilin metrics
+	table.display_metrics();
+	// nampilin data
+	// table.display_data();
 }
 
+// buat ngubah key yang string jadi int
 int string_to_int(string key)
 {
 	int sum = 0;
@@ -170,69 +227,369 @@ int main()
 		"UNIQUE-ALPHANUMERIC-ABC", "VARIABLE-LENGTH-XYZ-789", "MIXED-CHARS-PATTERN-456",
 		"SPECIAL-FORMAT-ID-2024", "ULTRA-LONG-IDENTIFIER-X1", "CUSTOM-PATTERN-ABCD-789",
 		"MULTI-SEGMENT-ID-999999", "HYPHENATED-LONG-STRING-A", "EXTENDED-ID-FORMAT-2025"};
-	// key: convert string data to ints using the method shown in the presentation
 	int combinedKeys[68];
+	// key buat data kombinasi: ubah value yang tadinya string jadi int pake cara di ppt
 	for (int i = 0; i < 68; i++)
 		combinedKeys[i] = string_to_int(combinedData[i]);
 
-	for (int size : tableSizes)
-	{
-		cout << "\n========== Testing division hash with table size: " << size << " ==========" << endl;
-
-		cout << "\nTesting with sorted data:" << endl;
+	cout << "\n==================== Testing with Sorted Data ====================" << endl;
+	for (int size : tableSizes) {
+		cout << "\n---------- Table Size: " << size << " ----------" << endl;
+		
+		cout << "\nDivision Hash:" << endl;
 		test_hash_functions(sortedData, sortedData, 100, size, division_hash);
 
-		cout << "\nTesting with random data:" << endl;
-		test_hash_functions(randomData, randomData, 150, size, division_hash);
-
-		cout << "\nTesting with structured data:" << endl;
-		test_hash_functions(structuredData, structuredData, 120, size, division_hash);
-
-		cout << "\nTesting with combined data:" << endl;
-		test_hash_functions(combinedKeys, combinedData, 68, size, division_hash);
-
-		cout << "\n========== Testing multiplication hash with table size: " << size << " ==========" << endl;
-
-		cout << "\nTesting with sorted data:" << endl;
+		cout << "\nMultiplication Hash:" << endl;
 		test_hash_functions(sortedData, sortedData, 100, size, multiplication_hash);
 
-		cout << "\nTesting with random data:" << endl;
-		test_hash_functions(randomData, randomData, 150, size, multiplication_hash);
-
-		cout << "\nTesting with structured data:" << endl;
-		test_hash_functions(structuredData, structuredData, 120, size, multiplication_hash);
-
-		cout << "\nTesting with combined data:" << endl;
-		test_hash_functions(combinedKeys, combinedData, 68, size, multiplication_hash);
-
-		cout << "\n========== Testing mid-square hash with table size: " << size << " ==========" << endl;
-
-		cout << "\nTesting with sorted data:" << endl;
+		cout << "\nMid-Square Hash:" << endl;
 		test_hash_functions(sortedData, sortedData, 100, size, mid_square_hash);
 
-		cout << "\nTesting with random data:" << endl;
+		cout << "\nFolding Hash:" << endl;
+		test_hash_functions(sortedData, sortedData, 100, size, folding_hash);
+	}
+
+	cout << "\n==================== Testing with Random Data ====================" << endl;
+	for (int size : tableSizes) {
+		cout << "\n---------- Table Size: " << size << " ----------" << endl;
+		
+		cout << "\nDivision Hash:" << endl;
+		test_hash_functions(randomData, randomData, 150, size, division_hash);
+
+		cout << "\nMultiplication Hash:" << endl;
+		test_hash_functions(randomData, randomData, 150, size, multiplication_hash);
+
+		cout << "\nMid-Square Hash:" << endl;
 		test_hash_functions(randomData, randomData, 150, size, mid_square_hash);
 
-		cout << "\nTesting with structured data:" << endl;
+		cout << "\nFolding Hash:" << endl;
+		test_hash_functions(randomData, randomData, 150, size, folding_hash);
+	}
+
+	cout << "\n==================== Testing with Structured Data ====================" << endl;
+	for (int size : tableSizes) {
+		cout << "\n---------- Table Size: " << size << " ----------" << endl;
+		
+		cout << "\nDivision Hash:" << endl;
+		test_hash_functions(structuredData, structuredData, 120, size, division_hash);
+
+		cout << "\nMultiplication Hash:" << endl;
+		test_hash_functions(structuredData, structuredData, 120, size, multiplication_hash);
+
+		cout << "\nMid-Square Hash:" << endl;
 		test_hash_functions(structuredData, structuredData, 120, size, mid_square_hash);
 
-		cout << "\nTesting with combined data:" << endl;
+		cout << "\nFolding Hash:" << endl;
+		test_hash_functions(structuredData, structuredData, 120, size, folding_hash);
+	}
+
+	cout << "\n==================== Testing with Combined Data ====================" << endl;
+	for (int size : tableSizes) {
+		cout << "\n---------- Table Size: " << size << " ----------" << endl;
+		
+		cout << "\nDivision Hash:" << endl;
+		test_hash_functions(combinedKeys, combinedData, 68, size, division_hash);
+
+		cout << "\nMultiplication Hash:" << endl;
+		test_hash_functions(combinedKeys, combinedData, 68, size, multiplication_hash);
+
+		cout << "\nMid-Square Hash:" << endl;
 		test_hash_functions(combinedKeys, combinedData, 68, size, mid_square_hash);
 
-		cout << "\n========== Testing folding hash with table size: " << size << " ==========" << endl;
-
-		cout << "\nTesting with sorted data:" << endl;
-		test_hash_functions(sortedData, sortedData, 100, size, folding_hash);
-
-		cout << "\nTesting with random data:" << endl;
-		test_hash_functions(randomData, randomData, 150, size, folding_hash);
-
-		cout << "\nTesting with structured data:" << endl;
-		test_hash_functions(structuredData, structuredData, 120, size, folding_hash);
-
-		cout << "\nTesting with combined data:" << endl;
+		cout << "\nFolding Hash:" << endl;
 		test_hash_functions(combinedKeys, combinedData, 68, size, folding_hash);
 	}
 
 	return 0;
 }
+
+/*
+	Benchmarking Result:
+
+	==================== Testing with Sorted Data ====================
+
+	---------- Table Size: 31 ----------
+
+	Division Hash:
+	Load Factor: 1
+	Collision Rate: 69%
+	Max Chain Length: 4
+
+	Multiplication Hash:
+	Load Factor: 1
+	Collision Rate: 69%
+	Max Chain Length: 4
+
+	Mid-Square Hash:
+	Load Factor: 0.935484
+	Collision Rate: 71%
+	Max Chain Length: 7
+
+	Folding Hash:
+	Load Factor: 0.612903
+	Collision Rate: 81%
+	Max Chain Length: 10
+
+	---------- Table Size: 101 ----------
+
+	Division Hash:
+	Load Factor: 0.990099
+	Collision Rate: 0%
+	Max Chain Length: 1
+
+	Multiplication Hash:
+	Load Factor: 0.90099
+	Collision Rate: 9%
+	Max Chain Length: 2
+
+	Mid-Square Hash:
+	Load Factor: 0.653465
+	Collision Rate: 34%
+	Max Chain Length: 4
+
+	Folding Hash:
+	Load Factor: 0.188119
+	Collision Rate: 81%
+	Max Chain Length: 10
+
+	---------- Table Size: 503 ----------
+
+	Division Hash:
+	Load Factor: 0.198807
+	Collision Rate: 0%
+	Max Chain Length: 1
+
+	Multiplication Hash:
+	Load Factor: 0.198807
+	Collision Rate: 0%
+	Max Chain Length: 1
+
+	Mid-Square Hash:
+	Load Factor: 0.192843
+	Collision Rate: 3%
+	Max Chain Length: 2
+
+	Folding Hash:
+	Load Factor: 0.0377734
+	Collision Rate: 81%
+	Max Chain Length: 10
+
+	HASIL DEDUKSI BEST METHOD:
+	division hash: karena dari metrics metode ini yang memiliki collision rate dan max chain length paling rendah diantara metode lainnya
+	load factor juga dipakai lumayan tinggi yang menandakan kalau metode ini bisa menampung data dengan merata
+
+	==================== Testing with Random Data ====================
+
+	---------- Table Size: 31 ----------
+
+	Division Hash:
+	Load Factor: 1
+	Collision Rate: 79.3333%
+	Max Chain Length: 8
+
+	Multiplication Hash:
+	Load Factor: 0.967742
+	Collision Rate: 80%
+	Max Chain Length: 10
+
+	Mid-Square Hash:
+	Load Factor: 1
+	Collision Rate: 79.3333%
+	Max Chain Length: 11
+
+	Folding Hash:
+	Load Factor: 1
+	Collision Rate: 79.3333%
+	Max Chain Length: 10
+
+	---------- Table Size: 101 ----------
+
+	Division Hash:
+	Load Factor: 0.782178
+	Collision Rate: 47.3333%
+	Max Chain Length: 4
+
+	Multiplication Hash:
+	Load Factor: 0.722772
+	Collision Rate: 51.3333%
+	Max Chain Length: 5
+
+	Mid-Square Hash:
+	Load Factor: 0.782178
+	Collision Rate: 47.3333%
+	Max Chain Length: 4
+
+	Folding Hash:
+	Load Factor: 0.772277
+	Collision Rate: 48%
+	Max Chain Length: 6
+
+	---------- Table Size: 503 ----------
+
+	Division Hash:
+	Load Factor: 0.266402
+	Collision Rate: 10.6667%
+	Max Chain Length: 3
+
+	Multiplication Hash:
+	Load Factor: 0.218688
+	Collision Rate: 26.6667%
+	Max Chain Length: 4
+
+	Mid-Square Hash:
+	Load Factor: 0.26839
+	Collision Rate: 10%
+	Max Chain Length: 3
+
+	Folding Hash:
+	Load Factor: 0.262425
+	Collision Rate: 12%
+	Max Chain Length: 2
+
+	HASIL DEDUKSI BEST METHOD:
+	mid-square: karena metode ini punya collision rate dan max chain length yang lebih optimal dibanding metode lain
+	mendekati dengan metode division namun menang di ukuran tabel yang lebih besar
+
+	==================== Testing with Structured Data ====================
+
+	---------- Table Size: 31 ----------
+
+	Division Hash:
+	Load Factor: 1
+	Collision Rate: 74.1667%
+	Max Chain Length: 6
+
+	Multiplication Hash:
+	Load Factor: 0.741935
+	Collision Rate: 80.8333%
+	Max Chain Length: 10
+
+	Mid-Square Hash:
+	Load Factor: 1
+	Collision Rate: 74.1667%
+	Max Chain Length: 8
+
+	Folding Hash:
+	Load Factor: 1
+	Collision Rate: 74.1667%
+	Max Chain Length: 6
+
+	---------- Table Size: 101 ----------
+
+	Division Hash:
+	Load Factor: 0.50495
+	Collision Rate: 57.5%
+	Max Chain Length: 6
+
+	Multiplication Hash:
+	Load Factor: 0.524752
+	Collision Rate: 55.8333%
+	Max Chain Length: 5
+
+	Mid-Square Hash:
+	Load Factor: 0.633663
+	Collision Rate: 46.6667%
+	Max Chain Length: 6
+
+	Folding Hash:
+	Load Factor: 0.29703
+	Collision Rate: 75%
+	Max Chain Length: 8
+
+	---------- Table Size: 503 ----------
+
+	Division Hash:
+	Load Factor: 0.200795
+	Collision Rate: 15.8333%
+	Max Chain Length: 2
+
+	Multiplication Hash:
+	Load Factor: 0.2167
+	Collision Rate: 9.16667%
+	Max Chain Length: 2
+
+	Mid-Square Hash:
+	Load Factor: 0.214712
+	Collision Rate: 10%
+	Max Chain Length: 2
+
+	Folding Hash:
+	Load Factor: 0.170974
+	Collision Rate: 28.3333%
+	Max Chain Length: 3
+
+	HASIL DEDUKSI BEST METHOD:
+	mid-square: sama seperti di dataset sebelumnya, metode ini yang paling merata dalam metrics dibanding metode lainnya
+
+	==================== Testing with Combined Data ====================
+
+	---------- Table Size: 31 ----------
+
+	Division Hash:
+	Load Factor: 0.870968
+	Collision Rate: 60.2941%
+	Max Chain Length: 7
+
+	Multiplication Hash:
+	Load Factor: 0.935484
+	Collision Rate: 57.3529%
+	Max Chain Length: 5
+
+	Mid-Square Hash:
+	Load Factor: 0.935484
+	Collision Rate: 57.3529%
+	Max Chain Length: 8
+
+	Folding Hash:
+	Load Factor: 0.903226
+	Collision Rate: 58.8235%
+	Max Chain Length: 6
+
+	---------- Table Size: 101 ----------
+
+	Division Hash:
+	Load Factor: 0.445545
+	Collision Rate: 33.8235%
+	Max Chain Length: 5
+
+	Multiplication Hash:
+	Load Factor: 0.475248
+	Collision Rate: 29.4118%
+	Max Chain Length: 4
+
+	Mid-Square Hash:
+	Load Factor: 0.39604
+	Collision Rate: 41.1765%
+	Max Chain Length: 5
+
+	Folding Hash:
+	Load Factor: 0.326733
+	Collision Rate: 51.4706%
+	Max Chain Length: 5
+
+	---------- Table Size: 503 ----------
+
+	Division Hash:
+	Load Factor: 0.105368
+	Collision Rate: 22.0588%
+	Max Chain Length: 4
+
+	Multiplication Hash:
+	Load Factor: 0.10338
+	Collision Rate: 23.5294%
+	Max Chain Length: 4
+
+	Mid-Square Hash:
+	Load Factor: 0.0974155
+	Collision Rate: 27.9412%
+	Max Chain Length: 6
+
+	Folding Hash:
+	Load Factor: 0.0775348
+	Collision Rate: 42.6471%
+	Max Chain Length: 5
+
+	HASIL DEDUKSI BEST METHOD:
+	multiplication hash: overall memiliki collision rate dan max chain paling rendah
+	juga memakai load factor yang lumayan tinggi dan merata dibanding metode lainnya
+*/

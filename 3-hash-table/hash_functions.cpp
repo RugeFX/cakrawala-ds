@@ -1,53 +1,58 @@
 #include <iostream>
 #include <cmath>
 #include <string>
+#include <algorithm>
 
 using namespace std;
 
-// Division Method
+// h(k) = k mod m
 int division_hash(int key, int table_size)
 {
+    // ngemodulus doang
     return key % table_size;
 }
 
-// Multiplication Method
+// h(k) = floor(m × (k × A mod 1))
 int multiplication_hash(int key, int table_size)
 {
-    // Using Knuth's constant (sqrt(5)-1)/2
-    const double A = 0.618033988749895;
-    double product = key * A;
-    double fractional = product - floor(product);
-    return floor(table_size * fractional);
+    // A = Golden Ratio
+    double A = 0.618;
+    // fmod = modulus buat tipe data double, karena gabisa langusng pake % (aneh juga c++)
+    double product = fmod(key * A, 1);
+    return floor(table_size * product);
 }
 
-// Mid-Square Method
 int mid_square_hash(int key, int table_size)
 {
-    // Square the key
+    // kuadratin key, taro dalem long long biar ga overflow / kegedean valuenya
     long long squared = (long long)key * key;
 
-    // Convert to string to get middle digits
+    // ubah ke string biar bisa ngambil nilai tengah
     string squared_str = to_string(squared);
     int len = squared_str.length();
 
-    // Get middle digits
-    int start = (len - 2) / 2;
-    string middle = squared_str.substr(start, 2);
+    // hitung berapa digit yang mau diambil tergantung dari ukuran
+    // dan di clamp biar value ga kurang dr 1 atau lebih dr 3
+    int digits_count = clamp((len + 1) / 2, 1, 3);
 
-    // Convert back to integer and take modulo
+    // ambil nilai tengah
+    int start = (len - digits_count) / 2;
+    string middle = squared_str.substr(start, digits_count);
+
+    // ubah ke int trus dimodulus sama ukuran table
     return stoi(middle) % table_size;
 }
 
-// Folding Method
 int folding_hash(int key, int table_size)
 {
     string key_str = to_string(key);
     int sum = 0;
 
-    // Split into groups of 2 digits and add them
-    for (int i = 0; i < key_str.length(); i += 2)
+    // split jadi 3 digit dan jumlahin
+    for (int i = 0; i < key_str.length(); i += 3)
     {
-        string group = key_str.substr(i, 2);
+        string group = key_str.substr(i, 3);
+        // di tambahin semua dah
         sum += stoi(group);
     }
 
