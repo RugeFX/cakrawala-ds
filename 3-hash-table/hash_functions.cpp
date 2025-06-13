@@ -33,7 +33,11 @@ int mid_square_hash(int key, int table_size)
 
     // hitung berapa digit yang mau diambil tergantung dari ukuran
     // dan di clamp biar value ga kurang dr 1 atau lebih dr 3
-    int digits_count = clamp((len + 1) / 2, 1, 3);
+    int digits_count = (len + 1) / 2;
+    if (digits_count < 1)
+        digits_count = 1;
+    if (digits_count > 3)
+        digits_count = 3;
 
     // ambil nilai tengah
     int start = (len - digits_count) / 2;

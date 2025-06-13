@@ -1,160 +1,13 @@
 #include <iostream>
 #include "hash_functions.cpp"
+#include "table.cpp"
 
 using namespace std;
 
-// nyomot dari tugas kemarin
-template <typename T>
-struct Node
-{
-	int key;
-	T value;
-	Node *next;
-	Node(int key, T value) : key(key), value(value), next(NULL) {}
-};
-
-// nyomot dari tugas kemarin
-template <typename T>
-class LinkedList
-{
-public:
-	LinkedList() : head(NULL) {}
-	~LinkedList()
-	{
-		Node<T> *curr = head;
-		while (curr != NULL)
-		{
-			Node<T> *next = curr->next;
-			delete curr;
-			curr = next;
-		}
-	}
-
-	Node<T> *head;
-
-	void append(int key, T value)
-	{
-		Node<T> *newNode = new Node<T>(key, value);
-
-		if (this->head == NULL)
-		{
-			this->head = newNode;
-			return;
-		}
-
-		Node<T> *curr = this->head;
-		while (curr->next != NULL)
-		{
-			curr = curr->next;
-		}
-
-		curr->next = newNode;
-	}
-
-	void display()
-	{
-		Node<T> *curr = this->head;
-
-		while (curr != NULL)
-		{
-			cout << "(" << curr->key << ", " << curr->value << ") ";
-			curr = curr->next;
-		}
-
-		cout << endl;
-	}
-};
-
-template <typename T>
-class HashTable
-{
-private:
-	LinkedList<T> *table;
-	int size;
-	// tipe data aneh biar bisa masukin function yang nerima 2 parameter int dan return int
-	int (*hash_function)(int, int);
-	int total_elements;
-	int collisions;
-	int occupied_slots;
-
-public:
-	HashTable(int size, int (*hash_function)(int, int)) : size(size), hash_function(hash_function), total_elements(0), collisions(0), occupied_slots(0)
-	{
-		table = new LinkedList<T>[size];
-	}
-
-	~HashTable()
-	{
-		delete[] table;
-	}
-
-	void insert(int key, T value)
-	{
-		// ambil index dari hasil olahan fungsi hash
-		int index = hash_function(key, size);
-		total_elements++;
-		
-		if (table[index].head == NULL)
-			// berarti belum ada data di index ini, jadi inkremen variabel occupied_slots
-			occupied_slots++;
-		else
-			// berarti udah ada data di index ini, jadi inkremen variabel collisions
-			collisions++;
-		
-		// masukin / append data ke linkedlist
-		table[index].append(key, value);
-	}
-
-	double get_load_factor() {
-		return (double)occupied_slots / size;
-	}
-
-	double get_collision_rate() {
-		// kalo totalnya 0 return 0, kalo ga return collisions / total_elements * 100
-		return total_elements > 0 ? ((double)collisions / total_elements) * 100 : 0;
-	}
-
-	int get_max_chain_length() {
-		// variabel buat nampung max length dari semua index
-		int max_length = 0;
-
-		for (int i = 0; i < size; i++) {
-			int length = 0;
-			Node<T>* curr = table[i].head;
-			while (curr != NULL) {
-				// nambahin ke length selama curr ga null
-				length++;
-				curr = curr->next;
-			}
-			// gunain fungsi max dari standard library buat ngebandingin max_length sama length, dan ambil yang paling besar dari keduanya
-			// kalo ga pake fungsi ini bisa pake ternary a > b ? a : b
-			max_length = max(max_length, length);
-		}
-
-		return max_length;
-	}
-
-	void display_metrics() {
-		cout << "Load Factor: " << get_load_factor() << endl;
-		cout << "Collision Rate: " << get_collision_rate() << "%" << endl;
-		cout << "Max Chain Length: " << get_max_chain_length() << endl;
-	}
-
-	void display_data()
-	{
-		for (int i = 0; i < size; i++)
-		{
-			cout << "#" << i << ": ";
-			table[i].display();
-		}
-	}
-};
-
 // helper function buat nge-test masink2 hash function
-template <typename T>
-void test_hash_functions(int keys[], T values[], int data_size, int size, int (*hash_function)(int, int))
+void test_int_hash_functions(int keys[], int values[], int data_size, int size, int (*hash_function)(int, int))
 {
-	HashTable<T> table(size, hash_function);
+	HashTable<int, int> table(size, hash_function);
 	for (int i = 0; i < data_size; i++)
 		table.insert(keys[i], values[i]);
 
@@ -164,14 +17,13 @@ void test_hash_functions(int keys[], T values[], int data_size, int size, int (*
 	// table.display_data();
 }
 
-// buat ngubah key yang string jadi int
-int string_to_int(string key)
+void test_string_hash_functions(string keys[], string values[], int data_size, int size, int (*hash_function)(int, int))
 {
-	int sum = 0;
-	for (char c : key)
-		sum += c;
+	HashTable<string, string> table(size, hash_function);
+	for (int i = 0; i < data_size; i++)
+		table.insert(keys[i], values[i]);
 
-	return sum;
+	table.display_metrics();
 }
 
 int main()
@@ -233,71 +85,75 @@ int main()
 		combinedKeys[i] = string_to_int(combinedData[i]);
 
 	cout << "\n==================== Testing with Sorted Data ====================" << endl;
-	for (int size : tableSizes) {
+	for (int size : tableSizes)
+	{
 		cout << "\n---------- Table Size: " << size << " ----------" << endl;
-		
+
 		cout << "\nDivision Hash:" << endl;
-		test_hash_functions(sortedData, sortedData, 100, size, division_hash);
+		test_int_hash_functions(sortedData, sortedData, 100, size, division_hash);
 
 		cout << "\nMultiplication Hash:" << endl;
-		test_hash_functions(sortedData, sortedData, 100, size, multiplication_hash);
+		test_int_hash_functions(sortedData, sortedData, 100, size, multiplication_hash);
 
 		cout << "\nMid-Square Hash:" << endl;
-		test_hash_functions(sortedData, sortedData, 100, size, mid_square_hash);
+		test_int_hash_functions(sortedData, sortedData, 100, size, mid_square_hash);
 
 		cout << "\nFolding Hash:" << endl;
-		test_hash_functions(sortedData, sortedData, 100, size, folding_hash);
+		test_int_hash_functions(sortedData, sortedData, 100, size, folding_hash);
 	}
 
 	cout << "\n==================== Testing with Random Data ====================" << endl;
-	for (int size : tableSizes) {
+	for (int size : tableSizes)
+	{
 		cout << "\n---------- Table Size: " << size << " ----------" << endl;
-		
+
 		cout << "\nDivision Hash:" << endl;
-		test_hash_functions(randomData, randomData, 150, size, division_hash);
+		test_int_hash_functions(randomData, randomData, 150, size, division_hash);
 
 		cout << "\nMultiplication Hash:" << endl;
-		test_hash_functions(randomData, randomData, 150, size, multiplication_hash);
+		test_int_hash_functions(randomData, randomData, 150, size, multiplication_hash);
 
 		cout << "\nMid-Square Hash:" << endl;
-		test_hash_functions(randomData, randomData, 150, size, mid_square_hash);
+		test_int_hash_functions(randomData, randomData, 150, size, mid_square_hash);
 
 		cout << "\nFolding Hash:" << endl;
-		test_hash_functions(randomData, randomData, 150, size, folding_hash);
+		test_int_hash_functions(randomData, randomData, 150, size, folding_hash);
 	}
 
 	cout << "\n==================== Testing with Structured Data ====================" << endl;
-	for (int size : tableSizes) {
+	for (int size : tableSizes)
+	{
 		cout << "\n---------- Table Size: " << size << " ----------" << endl;
-		
+
 		cout << "\nDivision Hash:" << endl;
-		test_hash_functions(structuredData, structuredData, 120, size, division_hash);
+		test_int_hash_functions(structuredData, structuredData, 120, size, division_hash);
 
 		cout << "\nMultiplication Hash:" << endl;
-		test_hash_functions(structuredData, structuredData, 120, size, multiplication_hash);
+		test_int_hash_functions(structuredData, structuredData, 120, size, multiplication_hash);
 
 		cout << "\nMid-Square Hash:" << endl;
-		test_hash_functions(structuredData, structuredData, 120, size, mid_square_hash);
+		test_int_hash_functions(structuredData, structuredData, 120, size, mid_square_hash);
 
 		cout << "\nFolding Hash:" << endl;
-		test_hash_functions(structuredData, structuredData, 120, size, folding_hash);
+		test_int_hash_functions(structuredData, structuredData, 120, size, folding_hash);
 	}
 
 	cout << "\n==================== Testing with Combined Data ====================" << endl;
-	for (int size : tableSizes) {
+	for (int size : tableSizes)
+	{
 		cout << "\n---------- Table Size: " << size << " ----------" << endl;
-		
+
 		cout << "\nDivision Hash:" << endl;
-		test_hash_functions(combinedKeys, combinedData, 68, size, division_hash);
+		test_string_hash_functions(combinedData, combinedData, 68, size, division_hash);
 
 		cout << "\nMultiplication Hash:" << endl;
-		test_hash_functions(combinedKeys, combinedData, 68, size, multiplication_hash);
+		test_string_hash_functions(combinedData, combinedData, 68, size, multiplication_hash);
 
 		cout << "\nMid-Square Hash:" << endl;
-		test_hash_functions(combinedKeys, combinedData, 68, size, mid_square_hash);
+		test_string_hash_functions(combinedData, combinedData, 68, size, mid_square_hash);
 
 		cout << "\nFolding Hash:" << endl;
-		test_hash_functions(combinedKeys, combinedData, 68, size, folding_hash);
+		test_string_hash_functions(combinedData, combinedData, 68, size, folding_hash);
 	}
 
 	return 0;
