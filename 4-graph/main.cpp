@@ -8,23 +8,29 @@ using namespace std;
 class Graph
 {
 private:
+    // jumlah vertex
     int V;
+    // matrix adjacency menggunakan vector 2 dimensi yang isinya int 0 / 1
     vector<vector<int>> adjMatrix;
+    // list adjacency menggunakan vector dari list yang isinya int sesuai dengan hubungan antar vertex
     vector<list<int>> adjList;
 
 public:
     Graph(int vertices)
     {
         V = vertices;
+        // nentuin ukuran matrix dan list, matrix diisi sama 0 semua karena belum ada isinya
         adjMatrix.resize(V, vector<int>(V, 0));
         adjList.resize(V);
     }
 
     void addEdge(int src, int dest)
     {
+        // tambahin hubungan antar vertex di matrix, index src ke dest dan dest ke src dijadiin 1
         adjMatrix[src][dest] = 1;
         adjMatrix[dest][src] = 1;
 
+        // tambahin hubungan di list, tinggal push relasinya ke list
         adjList[src].push_back(dest);
         adjList[dest].push_back(src);
     }
@@ -69,17 +75,26 @@ public:
     void BFS(int startVertex)
     {
         cout << "BFS Traversal starting from vertex " << startVertex << ": ";
+        // vector buat nentuin vertex yang sudah dikunjungi
         vector<bool> visited(V, false);
+        // queue buat ngejalanin BFS
         queue<int> q;
+        // vertex awal otomatis udah dikunjungi
         visited[startVertex] = true;
+        // push vertex awal ke queue
         q.push(startVertex);
+
         while (!q.empty())
         {
+            // ambil vertex paling depan dari queue
             int currentVertex = q.front();
             cout << currentVertex << " ";
+            // pop vertex dari queue
             q.pop();
+            // loop semua vertex yang terhubung sama current
             for (auto neighbor : adjList[currentVertex])
             {
+                // kalo belum dikunjungin, bikin visited trus push ke queue
                 if (!visited[neighbor])
                 {
                     visited[neighbor] = true;
@@ -93,17 +108,22 @@ public:
     void DFS(int startVertex)
     {
         cout << "DFS Traversal starting from vertex " << startVertex << ": ";
+        // vector buat nentuin vertex yang sudah dikunjungi
         vector<bool> visited(V, false);
+        // panggil fungsi rekursif untuk ngejalanin DFS
         DFSRecursive(startVertex, visited);
         cout << endl;
     }
 
     void DFSRecursive(int vertex, vector<bool> &visited)
     {
+        // buat visited true untuk vertex yang lagi dikunjungi
         visited[vertex] = true;
         cout << vertex << " ";
+        // loop semua vertex yang terhubung sama vertex
         for (auto neighbor : adjList[vertex])
         {
+            // kalo belum dikunjungin, recursiion lagi
             if (!visited[neighbor])
             {
                 DFSRecursive(neighbor, visited);
@@ -113,16 +133,24 @@ public:
 
     bool isConnected()
     {
+        // vector buat nentuin vertex yang sudah dikunjungi
         vector<bool> visited(V, false);
         queue<int> q;
+        // vertex awal otomatis udah dikunjungi
         visited[0] = true;
+        // push vertex awal ke queue
         q.push(0);
+
         while (!q.empty())
         {
+            // ambil vertex paling depan dari queue
             int currentVertex = q.front();
+            // pop vertex dari queue
             q.pop();
+            // loop semua vertex yang terhubung sama current
             for (auto neighbor : adjList[currentVertex])
             {
+                // kalo belum dikunjungin, bikin visited trus push ke queue
                 if (!visited[neighbor])
                 {
                     visited[neighbor] = true;
@@ -130,6 +158,8 @@ public:
                 }
             }
         }
+
+        // loop semua vertex, kalo ada yang belum dikunjungin, berarti graph ga connected
         for (int i = 0; i < V; i++)
         {
             if (!visited[i])
